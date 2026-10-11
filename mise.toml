@@ -1,0 +1,70 @@
+# mise manages: the Python + uv toolchain, the project virtualenv, env vars, and tasks.
+# First run:   mise trust && mise install && mise run setup
+
+min_version = "2026.1.0"
+
+[tools]
+python = "3.13"
+uv = "latest"
+
+[settings]
+# Auto-activate the .venv that `uv sync` creates, so `python`, `pytest`,
+# `langgraph` etc. resolve to the project environment whenever you cd in.
+python.uv_venv_auto = true
+
+[env]
+# Create/activate .venv (mise uses uv to create it when uv is installed).
+_.python.venv = { path = "{{config_root}}/.venv", create = true }
+# Secrets live in .env (git-ignored). Copy .env.example -> .env and fill it in.
+_.file = ".env"
+
+# Non-secret defaults (override any of these in .env).
+PROJECT_ROOT = "{{config_root}}"
+UV_PYTHON = "3.13"
+UV_PROJECT_ENVIRONMENT = "{{config_root}}/.venv"
+S1983_CORPUS_DIR = "{{config_root}}/data/corpus"
+S1983_CHECKPOINT_DB = "{{config_root}}/.state/checkpoints.sqlite"
+S1983_MAX_JUDGE_REVISIONS = "3"
+S1983_MAX_VERIFY_RETRIES = "2"
+
+# ---------------------------------------------------------------- tasks
+
+[tasks.setup]
+description = "Create .env from the template (if missing) and sync dependencies"
+run = [
+  "test -f .env || cp .env.example .env",
+  "mkdir -p .state",
+  "uv sync --all-groups",
+]
+
+[tasks.sync]
+description = "Sync dependencies from uv.lock"
+run = "uv sync --all-groups"
+
+[tasks.test]
+description = "Run the offline test suite (no API keys needed)"
+run = "uv run pytest -q"
+
+[tasks.lint]
+description = "Lint and format-check"
+run = ["uv run ruff check src tests", "uv run ruff format --check src tests"]
+
+[tasks.fmt]
+description = "Auto-format and fix lint"
+run = ["uv run ruff format src tests", "uv run ruff check --fix src tests"]
+
+[tasks.run]
+description = "Run the pipeline: mise run run -- --facts examples/facts.example.md"
+run = "uv run s1983 run"
+
+[tasks.verify]
+description = "Run only the citation verification gate on a file: mise run verify -- path/to/draft.md"
+run = "uv run s1983 verify"
+
+[tasks.studio]
+description = "Open the graph in LangGraph Studio (local dev server)"
+run = "uv run langgraph dev"
+
+[tasks.ci]
+description = "Lint + tests"
+depends = ["lint", "test"]

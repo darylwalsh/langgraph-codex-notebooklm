@@ -1,0 +1,9 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "s1983": "./src/s1983_agents/graph.py:make_graph"
+  },
+  "env": ".env",
+  "python_version": "3.13"
+}
